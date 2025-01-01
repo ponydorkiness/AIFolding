@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Folding Diagram</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 2em;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #myCanvas {
+            border: 3px solid #333;
+            background-color: #fff;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 280px;
+            border: 2px solid #007BFF;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #0056b3;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 200px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:active {
+            background-color: #004085;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Map Folding Diagram</h1>
+    <div class="controls">
+        <input type="text" id="numberInput" placeholder="Enter numbers separated by commas (e.g., 1, 2, 3)">
+        <button onclick="handleInput()">Draw</button>
+    </div>
+
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+
+    <script>
+        function handleInput() {
+            const inputValue = document.getElementById('numberInput').value.trim();
+            try {
+                // Remove spaces and split by commas
+                const numbers = inputValue.split(',').map(num => parseInt(num.trim()));
+
+                if (numbers.every(num => !isNaN(num))) {
+                    drawCurves(numbers);
+                } else {
+                    alert("Please enter a valid list of numbers separated by commas.");
+                }
+            } catch (e) {
+                alert("Invalid input. Please enter a valid list of numbers separated by commas.");
+            }
+        }
+
+        function drawCurves(numbers) {
+            const canvas = document.getElementById('myCanvas');
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas before drawing
+
+            // Define padding around the canvas
+            const padding = 100;  // Reduced padding for better centering
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+
+            const lineHeight = (canvasHeight - padding * 2) / (numbers.length + 1); // Calculate spacing for lines
+            const lineLength = canvasWidth - padding * 2; // Length of the lines
+
+            // Set line thickness and color
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#333";
+
+            // Draw the lines with padding, center vertically
+            for (let i = 0; i < numbers.length; i++) {
+                let y = padding + lineHeight * (i + 1);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);  // Starting point of the line
+                ctx.lineTo(padding + lineLength, y);  // Ending point of the line
+                ctx.stroke();
+            }
+
+            // Mark the starting line for '1' with a dot
+            const startIndex = numbers.indexOf(1);  // Find the index of the number '1'
+            if (startIndex !== -1) {
+                const startY = padding - padding*0.2 + lineHeight * (startIndex + 1);
+                const dotRadius = 4;
+                ctx.beginPath();
+                ctx.arc(padding+20, startY, dotRadius, 0, Math.PI * 2);  // Draw a circle at the start
+                ctx.fill();
+            }
+
+            // Draw the curves based on the index order
+            let isRight = true; // Starts with drawing on the right
+            for (let i = 0; i < numbers.length - 1; i++) {
+                // Get the indices of the lines in numerical order (indexOf returns the position of the number in the array)
+                let startLineIndex = numbers.indexOf(i + 1);  // Find the index of the current number (1-based)
+                let endLineIndex = numbers.indexOf(i + 2);    // Find the index of the next number (1-based)
+
+                let startY = padding + lineHeight * (startLineIndex + 1);
+                let endY = padding + lineHeight * (endLineIndex + 1);
+
+                // Calculate the X positions based on the right/left alternating pattern
+                let startX = isRight ? padding + lineLength : padding;
+                let endX = isRight ? padding + lineLength : padding;
+
+                // Calculate the difference between the lines to adjust curve width
+                const lineDifference = Math.abs(endLineIndex - startLineIndex);
+                const curveWidth = 30 + lineDifference * 20;  // Increase the width of the curve based on the difference
+
+                // Adjust Bezier curve for more circular arcs and dynamic width
+                let controlPointX1 = startX + (isRight ? curveWidth : -curveWidth);
+                let controlPointX2 = endX + (isRight ? curveWidth : -curveWidth);
+
+                // Draw a smooth cubic Bezier curve
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.bezierCurveTo(
+                    controlPointX1, startY,  // Control point for start
+                    controlPointX2, endY,    // Control point for end
+                    endX, endY
+                );
+                ctx.stroke();
+
+                // Alternate the side for the next curve
+                isRight = !isRight;
+            }
+        }
+    </script>
+
+</body>
+</html>

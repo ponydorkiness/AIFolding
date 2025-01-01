@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Graph Plotter</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<canvas id="myChart" width="400" height="400"></canvas>
+
+<script>
+    function plotFunction(fn, startX, endX, step) {
+        const labels = [];
+        const data = [];
+        
+        for (let x = startX; x <= endX; x += step) {
+            labels.push(x);
+            data.push(fn(x));
+        }
+
+        return { labels, data };
+    }
+
+    // Example: y = sin(x)
+    function exampleFunction(x) {
+        let num = decimalToMap(x)
+        let rules = [2,3,3,3,1,3,7,7,5,5,6,2,2,5,2,2,6,7]
+		ApplyRules(num,rules)
+        console.log(num)
+        console.log(mapToDecimal(num),x)
+        return mapToDecimal(num)
+    }
+	
+    function mapToDecimal(numbers) {
+        return numbers.length
+    }
+
+    function decimalToMap(number) {
+        let array = []
+        for (let i = 1; i < number+1; i++) {
+            array.push(i)
+        }
+        return array;
+    }
+
+
+    function removeLargestDigit(array){
+        let largestNum = Math.max(...array)
+        let index = array.indexOf(largestNum)
+        if (index > -1) {
+          array.splice(index, 1); 
+        }
+    }
+    function addNextDigit(array,side){
+        let nextBiggestNum = Math.max(...array)+1
+        if(side){
+            array.push(nextBiggestNum)
+        }else{
+            array.unshift(nextBiggestNum)
+        }
+    }
+    function swapDigits(array,side){
+        let temp;
+        if(side){
+            temp = array[0]
+            array[0] = array[1]
+            array[1] = temp
+        }else{
+            let arrayLength = array.length-1
+            temp = array[arrayLength-1]
+            array[arrayLength-1] = array[arrayLength]
+            array[arrayLength] = temp
+        }
+    }
+
+function ApplyRules(array, rules) {
+    for (let rule of rules) {
+        switch (rule) {
+            case 1:
+                if (array[array.length - 1] < array[0]) {
+                    swapDigits(array, 0); // Swap digits at position 0
+                }
+                break;
+            case 2:
+                if (array[array.length - 1] < array[0]) {
+                    swapDigits(array, 1); // Swap digits at position 1
+                }
+                break;
+            case 3:
+                removeLargestDigit(array); // Remove the largest digit
+                break;
+            case 4:
+                addNextDigit(array, 0); // Add next digit with offset 0
+                break;
+            case 5:
+                addNextDigit(array, 1); // Add next digit with offset 1
+                break;
+            case 6:
+            if(array.length > 2){
+              array.length = 0
+              array.push(1)
+            }
+            break;
+			case 7:
+            let arraylength = array.length
+            for (let j = 1; j < arraylength; j++) {
+              array.push(arraylength+j)              			
+            }     
+            break;
+            case 8:
+            if(array.length == 0){
+              array.push(1)
+            }
+            break;
+        }
+    }
+}
+
+    const { labels, data } = plotFunction(exampleFunction, 0, 30, 1);
+
+    // Create the chart
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'y = sin(x)',
+                data: data,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'x'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'y'
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
