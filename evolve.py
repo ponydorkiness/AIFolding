@@ -68,13 +68,6 @@ def rewrite_array(
             lst[i] += max_s - max_p
 
     return lst[:match_i] + repl + lst[match_i + len(pattern):]
-
-def clear_console():
-    # Clear command for Windows and UNIX-based systems (Linux, macOS)
-    if os.name == 'nt':
-        os.system('cls')  # Windows
-    else:
-        os.system('clear')  # UNIX-based systems
         
 def evolve(steps):
     rule1 = [1]
@@ -87,7 +80,6 @@ def evolve(steps):
         rule2score = calculate_error_sum(rule2, 50, False)
         
         # Print iteration message
-        clear_console()
         print(f"Iteration {i} training for {round(time.time() - start_time)} seconds")
 
         # Progress bar
