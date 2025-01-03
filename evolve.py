@@ -5,7 +5,6 @@ from collections import deque
 from collections.abc import Iterable, Iterator, Sequence
 import itertools as it
 
-
 def sliding_window[T](
         iterable: Iterable[T],
         n: int,
@@ -16,28 +15,32 @@ def sliding_window[T](
         window.append(x)
         yield tuple(window)
 
-
 def rewrite_array(
         lst: list[int],
         pattern: Sequence[int],
         sub: Sequence[int],
 ) -> list[int]:
     # Reduce non-negative numbers in pattern and substitution
-    min_p = min(p for p in pattern if p >= 0)
-    pattern = tuple(
-        p - min_p if p >= 0 else p
-        for p in pattern
-    )
-    sub = tuple(
-        s - min_p if s >= 0 else s
-        for s in sub
-    )
+    min_p = min((p for p in pattern if p >= 0), default=None)
+    if min_p is not None:
+        pattern = tuple(
+            p - min_p if p >= 0 else p
+            for p in pattern
+        )
+        sub = tuple(
+            s - min_p if s >= 0 else s
+            for s in sub
+        )
+    else:
+        # We should not be replacing wildcard-only patterns with
+        # anything containing non-wildcards
+        assert all(s < 0 for s in sub)
 
     match_i = None
     # For each window of the pattern's length
     for i, window in enumerate(sliding_window(lst, len(pattern))):
         # Find how much to reduce non-negative numbers in the window by
-        min_w = min(w for w, p in zip(window, pattern) if p >= 0)
+        min_w = min((w for w, p in zip(window, pattern) if p >= 0), default=0)
         # If the reduced window matches this pattern
         if all(
             w - min_w == p
@@ -52,14 +55,31 @@ def rewrite_array(
     if match_i is None:
         return lst
 
+    # region Original spec
+    # window = lst[match_i:match_i + len(pattern)]
+    # wilds = it.compress(window, iter(p < 0 for p in pattern))
+    # # NOTE The default value of 0 isn't used here; it's just to keep the
+    # # type checker happy.
+    # min_repl = min((v for v, p in zip(window, pattern) if p >= 0), default=0)
+    # # Create replacement window (substituting wildcards as needed)
+    # repl = [
+    #     min_repl + s if s >= 0 else next(wilds)
+    #     for s in sub
+    # ]
+    # endregion
+
+    # region New spec
     window = lst[match_i:match_i + len(pattern)]
-    wilds = it.compress(window, iter(p < 0 for p in pattern))
-    min_repl = min(v for v, p in zip(window, pattern) if p >= 0)
+    wilds = {p: v for v, p in zip(window, pattern) if p < 0}
+    # NOTE The default value of 0 isn't used here; it's just to keep the
+    # type checker happy.
+    min_repl = min((v for v, p in zip(window, pattern) if p >= 0), default=0)
     # Create replacement window (substituting wildcards as needed)
     repl = [
-        min_repl + s if s >= 0 else next(wilds)
+        min_repl + s if s >= 0 else wilds[s]
         for s in sub
     ]
+    # endregion
 
     # Chain items together from before, within, and after the window
     # NOTE The items within the replacement window should be considered
@@ -126,29 +146,22 @@ def calculate_error_sum(mutation, max_tests_per_function, doPrint):
             print(f"{i}: {target} => {num}")
     return error_sum
 
-num_of_rules = 5
+rules = {
+    1: ([1], [1]), 
+    2: ([1, 2], [1]),
+    3: ([1], [1, 2]), 
+    4: ([1, 2, 3], [1, 2]),  
+    5: ([-1, -2, -3], [-3, -2, -1]), 
+    6: ([-1, -2, -3, -4], [-1,-2,-3]),    
+    7: ([-3, -2, -1], [-1,-2,-3]),  
+}
 
 def apply_rule(array, rule):
-    if rule == 1:
-        return array
-    elif rule == 2:
-        pattern = [1, 2]
-        sub = [1]
+    if rule in rules:
+        pattern, sub = rules[rule]
         return rewrite_array(array, pattern, sub)
-    elif rule == 3:
-        pattern = [1]
-        sub = [1,2]
-        return rewrite_array(array, pattern, sub)
-    elif rule == 4:
-        pattern = [1,2,3]
-        sub = [1,2]
-        return rewrite_array(array, pattern, sub)
-    elif rule == 5:
-        pattern = [3,1,2]
-        sub = [1,2,3]
-        return rewrite_array(array, pattern, sub)
-    else:
-        return array
+    return array
+num_of_rules = len(rules)
 
 def mutate(rule_array):
     mutation_type = random.randint(1, 3)
