@@ -4,7 +4,7 @@ import random
 from collections import deque
 from collections.abc import Iterable, Iterator
 import itertools as it
-#Sliding_window rewrite_array were written by Josiah Windslow
+#Rewrite_array was written by Josiah Windslow
 def sliding_window[T](iterable: Iterable[T], n: int) -> Iterator[tuple[T, ...]]:
     iterator = iter(iterable)
     window = deque(it.islice(iterator, n - 1), maxlen=n)
