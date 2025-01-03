@@ -126,7 +126,7 @@ def calculate_error_sum(mutation, max_tests_per_function, doPrint):
             print(f"{i}: {target} => {num}")
     return error_sum
 
-num_of_rules = 4
+num_of_rules = 5
 
 def apply_rule(array, rule):
     if rule == 1:
