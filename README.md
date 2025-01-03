@@ -2,7 +2,7 @@
 
 # **Foldarix**
 
-Foldarix uses 2D map folding and rule rewriting in order to simulate functions along with an evolutionary algrothim to train it. 
+Foldarix uses "Stamp Folding" and rule rewriting in order to simulate functions along with an evolutionary algrothim to train it. 
 This makes it able to emulates functions, thus making it an AI. So it is AI made out of folding paper, pretty neat, Huh?
 <br><br>
 If you want better knowledge on folding watch these linked videos.<br>
