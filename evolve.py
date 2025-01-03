@@ -2,10 +2,14 @@ import time
 import os
 import random
 from collections import deque
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 import itertools as it
-#Rewrite_array was written by Josiah Windslow
-def sliding_window[T](iterable: Iterable[T], n: int) -> Iterator[tuple[T, ...]]:
+
+
+def sliding_window[T](
+        iterable: Iterable[T],
+        n: int,
+) -> Iterator[tuple[T, ...]]:
     iterator = iter(iterable)
     window = deque(it.islice(iterator, n - 1), maxlen=n)
     for x in iterator:
@@ -15,9 +19,10 @@ def sliding_window[T](iterable: Iterable[T], n: int) -> Iterator[tuple[T, ...]]:
 
 def rewrite_array(
         lst: list[int],
-        pattern: tuple[int, ...],
-        sub: tuple[int, ...],
+        pattern: Sequence[int],
+        sub: Sequence[int],
 ) -> list[int]:
+    # Reduce non-negative numbers in pattern and substitution
     min_p = min(p for p in pattern if p >= 0)
     pattern = tuple(
         p - min_p if p >= 0 else p
@@ -29,45 +34,48 @@ def rewrite_array(
     )
 
     match_i = None
+    # For each window of the pattern's length
     for i, window in enumerate(sliding_window(lst, len(pattern))):
         # Find how much to reduce non-negative numbers in the window by
         min_w = min(w for w, p in zip(window, pattern) if p >= 0)
-
-        match = True
-        # Check that the reduced window matches the pattern
-        for w, p in zip(window, pattern):
-            if p < 0:
-                continue
-            if w - min_w != p:
-                match = False
-                break
-        if match:
+        # If the reduced window matches this pattern
+        if all(
+            w - min_w == p
+            for w, p in zip(window, pattern)
+            if p >= 0
+        ):
+            # We have found a match
             match_i = i
             break
 
+    # Return early if a match wasn't found
     if match_i is None:
         return lst
 
-    # Find minimum and maximum values of matched window
-    match_window = lst[match_i:match_i + len(pattern)]
-    min_w = min(w for w, p in zip(match_window, pattern) if p >= 0)
-    max_w = max(match_window)
-
-    # Construct replacement for matched window
-    wilds = iter(w for w, p in zip(match_window, pattern) if p < 0)
+    window = lst[match_i:match_i + len(pattern)]
+    wilds = it.compress(window, iter(p < 0 for p in pattern))
+    min_repl = min(v for v, p in zip(window, pattern) if p >= 0)
+    # Create replacement window (substituting wildcards as needed)
     repl = [
-        min_w + s if s >= 0 else next(wilds)
+        min_repl + s if s >= 0 else next(wilds)
         for s in sub
     ]
 
-    max_p = max(p for p in pattern if p >= 0)
-    max_s = max(s for s in sub if s >= 0)
-    # Shift values of other items in list to accomodate replacement
-    for i, v in enumerate(lst):
-        if v > max_w:
-            lst[i] += max_s - max_p
-
-    return lst[:match_i] + repl + lst[match_i + len(pattern):]
+    # Chain items together from before, within, and after the window
+    # NOTE The items within the replacement window should be considered
+    # "before" the other items for purposes of sorting, so we make each
+    # item a tuple with a second value to sort by.
+    items = list(it.chain(
+        ((v, 1) for v in lst[:match_i]),
+        ((v, 0) for v in repl),
+        ((v, 1) for v in lst[match_i + len(pattern):]),
+    ))
+    # Return indices of each item when sorted (1-indexed)
+    indices = sorted(range(len(items)), key=items.__getitem__)
+    result = [0] * len(indices)
+    for new_pos, old_pos in enumerate(indices, 1):
+        result[old_pos] = new_pos
+    return result
         
 def evolve(steps):
     rule1 = [1]
