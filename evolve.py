@@ -5,6 +5,7 @@ from collections import deque
 from collections.abc import Iterable, Iterator, Sequence
 import itertools as it
 
+
 def sliding_window[T](
         iterable: Iterable[T],
         n: int,
@@ -19,6 +20,7 @@ def rewrite_array(
         lst: list[int],
         pattern: Sequence[int],
         sub: Sequence[int],
+        apply_once: bool = False,
 ) -> list[int]:
     # Reduce non-negative numbers in pattern and substitution
     min_p = min((p for p in pattern if p >= 0), default=None)
@@ -36,100 +38,100 @@ def rewrite_array(
         # anything containing non-wildcards
         assert all(s < 0 for s in sub)
 
-    match_i = None
-    # For each window of the pattern's length
-    for i, window in enumerate(sliding_window(lst, len(pattern))):
-        # Find how much to reduce non-negative numbers in the window by
-        min_w = min((w for w, p in zip(window, pattern) if p >= 0), default=0)
-        # If the reduced window matches this pattern
+    matches = []
+    i = 0
+    while i + len(pattern) <= len(lst):
+        window = lst[i:i + len(pattern)]
+        min_w = min(
+            (w for w, p in zip(window, pattern) if p >= 0),
+            default=0,
+        )
         if all(
             w - min_w == p
             for w, p in zip(window, pattern)
             if p >= 0
         ):
-            # We have found a match
-            match_i = i
-            break
+            matches.append(i)
+            if apply_once:
+                break
+            i += len(pattern)
+            continue
+        i += 1
 
-    # Return early if a match wasn't found
-    if match_i is None:
+    # If no matches were found, return the original list
+    if not matches:
         return lst
 
-    # region Original spec
-    # window = lst[match_i:match_i + len(pattern)]
-    # wilds = it.compress(window, iter(p < 0 for p in pattern))
-    # # NOTE The default value of 0 isn't used here; it's just to keep the
-    # # type checker happy.
-    # min_repl = min((v for v, p in zip(window, pattern) if p >= 0), default=0)
-    # # Create replacement window (substituting wildcards as needed)
-    # repl = [
-    #     min_repl + s if s >= 0 else next(wilds)
-    #     for s in sub
-    # ]
-    # endregion
+    result = lst.copy()
+    for match_i in reversed(matches):
+        window = result[match_i:match_i + len(pattern)]
+        wilds = {p: v for v, p in zip(window, pattern) if p < 0}
+        min_repl = min(
+            (v for v, p in zip(window, pattern) if p >= 0),
+            default=0,
+        )
+        repl = [
+            min_repl + s if s >= 0 else wilds[s]
+            for s in sub
+        ]
 
-    # region New spec
-    window = lst[match_i:match_i + len(pattern)]
-    wilds = {p: v for v, p in zip(window, pattern) if p < 0}
-    # NOTE The default value of 0 isn't used here; it's just to keep the
-    # type checker happy.
-    min_repl = min((v for v, p in zip(window, pattern) if p >= 0), default=0)
-    # Create replacement window (substituting wildcards as needed)
-    repl = [
-        min_repl + s if s >= 0 else wilds[s]
-        for s in sub
-    ]
-    # endregion
+        items = list(it.chain(
+            ((v, 1) for v in result[:match_i]),
+            ((v, 0) for v in repl),
+            ((v, 1) for v in result[match_i + len(pattern):]),
+        ))
+        indices = sorted(range(len(items)), key=items.__getitem__)
+        result = [0] * len(indices)
+        for new_pos, old_pos in enumerate(indices, 1):
+            result[old_pos] = new_pos
 
-    # Chain items together from before, within, and after the window
-    # NOTE The items within the replacement window should be considered
-    # "before" the other items for purposes of sorting, so we make each
-    # item a tuple with a second value to sort by.
-    items = list(it.chain(
-        ((v, 1) for v in lst[:match_i]),
-        ((v, 0) for v in repl),
-        ((v, 1) for v in lst[match_i + len(pattern):]),
-    ))
-    # Return indices of each item when sorted (1-indexed)
-    indices = sorted(range(len(items)), key=items.__getitem__)
-    result = [0] * len(indices)
-    for new_pos, old_pos in enumerate(indices, 1):
-        result[old_pos] = new_pos
+        if apply_once:
+            break
+
     return result
-        
+    
 def evolve(steps):
     rule1 = [1]
     rule2 = [1]
     start_time = time.time()  # Start timing
 
-    for i in range(1, steps + 1):        
+    for i in range(1, steps + 1):
         # Calculate error sum
         rule1score = calculate_error_sum(rule1, 50, False)
         rule2score = calculate_error_sum(rule2, 50, False)
         
         # Print iteration message
-        print(f"Iteration {i} training for {round(time.time() - start_time)} seconds")
-
+        print(f"Iteration {i} training for {round(time.time() - start_time)} seconds - The current score is {rule2score}")
+        
         # Progress bar
         progress = (i / steps) * 100
         bar = f"[{'#' * (i * 40 // steps)}{' ' * (40 - i * 40 // steps)}] {progress:.2f}%"
-        print('\r' + bar)
+        print(bar)
 
         if rule1score == 0:
-            print(rule1, "0")
+            print("\n", rule1, "0")
             calculate_error_sum(rule2, 50, True)
             return
+
+        # Mutate rules
         rule1 = mutate(rule1)
         rule2 = mutate(rule2)
 
-        if rule1score > rule2score:
-            rule1 = rule2
-        else:
-            rule2 = rule1
-    
-    print(rule2, rule2score)
-    calculate_error_sum(rule2, 50, True)
+        # Occasionally choose randomly instead of by score
+        if random.random() < 0.2:  # 20% chance to mutate randomly.
+            if random.choice([True, False]):
+                rule1 = rule2
+            else:
+                rule2 = rule1
+        else:  # Default to choosing the mutation with the lower score
+            if rule1score > rule2score:
+                rule1 = rule2
+            else:
+                rule2 = rule1
 
+    print("\n", rule2, rule2score)
+    calculate_error_sum(rule2, 50, True)
+    
 def calculate_error_sum(mutation, max_tests_per_function, doPrint):
     error_sum = 0
     for i in range(1, max_tests_per_function + 1):  # Start i at 1
@@ -147,22 +149,26 @@ def calculate_error_sum(mutation, max_tests_per_function, doPrint):
     return error_sum
 
 rules = {
-    1: ([1], [1]), 
-    2: ([1, 2], [1]),
-    3: ([1], [1, 2]), 
-    4: ([1, 2, 3], [1, 2]),  
-    5: ([-1, -2, -3], [-3, -2, -1]), 
-    6: ([-1, -2, -3, -4], [-1,-2,-3]),    
-    7: ([-3, -2, -1], [-1,-2,-3]),  
+    #Pattern, Subsiution, Match only first occurrence?
+    1: ([1], [1], True), 
+    2: ([1, 2], [1], True),
+    3: ([1], [1, 2], True), 
+    4: ([1,2,3], [1, 2], True), 
+    5: ([3,1,2], [1, 2, 3], True), 
+    7: ([-1,-2,-3, 1], [-3, -2, -1, 1, 2], False), 
+    8: ([1, 2], [1], False),
+    9: ([1], [1, 2], False), 
+    10: ([1,2,3], [1, 2], False), 
+    11: ([3,1,2], [1, 2, 3], False), 
 }
+num_of_rules = len(rules)
 
 def apply_rule(array, rule):
     if rule in rules:
-        pattern, sub = rules[rule]
-        return rewrite_array(array, pattern, sub)
+        pattern, sub, PickFirst = rules[rule]
+        return rewrite_array(array, pattern, sub, PickFirst)
     return array
-num_of_rules = len(rules)
-
+    
 def mutate(rule_array):
     mutation_type = random.randint(1, 3)
     new_value = random.randint(1, num_of_rules)
@@ -189,7 +195,7 @@ def decimal_to_map(num):
     return current_list
 
 def f(x):
-    return x+7
+    return x*3
 
 # Example usage
 evolve(400)
